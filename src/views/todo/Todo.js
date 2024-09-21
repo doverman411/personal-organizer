@@ -10,62 +10,57 @@ import {
     CFormLabel,
     CFormInput,
     CFormTextarea,
+    CCard,
+    CCardHeader,
+    CListGroup,
+    CListGroupItem,
+    CFormCheck,
+    CContainer,
+    CBadge,
  } from "@coreui/react"
+import { Set } from "core-js"
 
-const Todo = () => {
-    const [taskID, setTaskID] = useState(0)
-    const [tasks, setTasks] = useState([])
-    const [visible, setVisible] = useState(false)
-    const [newTaskName, setNewTaskName] = useState('')
-    const [newTaskDescription, setNewTaskDescription] = useState('')
+const AddTaskForm = ({onSubmit, tagPool}) => {
+    const [name, setName] = useState('')
+    const [description, setDescription] = useState('')
+    const [tags, setTags] = useState(new Set())
 
-    const isAddTaskFormValid = () => {
-        return newTaskName.length;
+    const valid = () => {
+        return name.length;
     }
 
-    const resetAddTaskForm = () => {
-        setNewTaskName('')
-        setNewTaskDescription('')
-    }
-
-    const addTask = () => {
-        if (!isAddTaskFormValid()) {
+    const submit = (close) => {
+        if (!valid()) {
             return
         }
-        setTasks(() => [...tasks, {
-            id: taskID,
-            name: newTaskName,
-            description: newTaskDescription
-        }])
-        setTaskID(taskID+1)
+        onSubmit({
+            name: name, 
+            description: description, 
+            tags: tags, 
+            close: close,
+        })
     }
 
-    const closeAddTask = () => {
-        setVisible(false)
-        setTimeout(resetAddTaskForm, 150)
+    const closeForm = () => {
+        onSubmit(undefined)
+    }
+
+    const resetForm = () => {
+        setName('')
+        setDescription('')
+        setTags(new Set())
     }
 
     return (
         <>
-         <CButton 
-            color="primary" 
-            onClick={() => {setVisible(true)}}
-        >
-            Add
-        </CButton>
-
-        <ul>
-            {tasks.map(v=><li key={v.id}>{v.name}</li>)}
-        </ul>
-
         <CModal
         alignment="center"
-        visible={visible}
-        onClose={() => {setVisible(false)}}
-        aria-labelledby="VerticallyCenteredExample"
+        visible
+        onClose={closeForm}
+        aria-labelledby="AddTask"
         >
             <CModalHeader>
-                <CModalTitle id="VerticallyCenteredExample">New Task</CModalTitle>
+                <CModalTitle id="AddTask">New Task</CModalTitle>
             </CModalHeader>
             <CModalBody>
                 <CForm>
@@ -73,51 +68,142 @@ const Todo = () => {
                         <CFormLabel htmlFor="taskName">Name</CFormLabel>
                         <CFormInput
                             id="taskName" 
-                            value={newTaskName}
+                            value={name}
                             type="text"
-                            invalid={!newTaskName.length}
+                            invalid={!name.length}
                             feedbackInvalid={<p>This field is required</p>}
-                            onChange={(event)=>{setNewTaskName(event.target.value)}}
+                            onChange={(event)=>{setName(event.target.value)}}
                         />
                     </div>
                     <div className="mb-3">
                         <CFormLabel htmlFor="taskDescription">Description</CFormLabel>
                         <CFormTextarea 
-                            id="taskDescrption" 
-                            value={newTaskDescription}
+                            id="taskDescription" 
+                            value={description}
                             type="text"
-                            rows={3} 
-                            onChange={(event)=>{setNewTaskDescription(event.target.value)}}
+                            rows={1} 
+                            onChange={(event)=>{setDescription(event.target.value)}}
                         ></CFormTextarea>
+                    </div>
+                    <div className="mb-3">
+                        <CFormLabel>Tags</CFormLabel>
+                        {Array.from(tagPool).map((tag) => 
+                            <CFormCheck key={tag.name}
+                            id={`taskTags-${tag.name}`}
+                            checked={tags.has(tag)}
+                            label={<CBadge shape="rounded-pill" style={{backgroundColor: tag.color}}>{tag.name}</CBadge>}
+                            onChange={(event)=>{
+                                const newTags = new Set(tags)
+                                if (event.target.checked) {
+                                    newTags.add(tag)
+                                } else {
+                                    newTags.delete(tag)
+                                }
+                                setTags(newTags)
+                            }}
+                            ></CFormCheck>
+                        )}
                     </div>
                 </CForm>
             </CModalBody>
             <CModalFooter>
-                <CButton color="secondary" onClick={closeAddTask}>
+                <CButton color="secondary" onClick={closeForm}>
                 Close
                 </CButton>
                 <CButton color="primary" 
                     type="submit"
                     onClick={() => {
-                        addTask()
-                        if (isAddTaskFormValid()) {
-                            closeAddTask()
+                        submit(true)
+                        if (valid()) {
+                            closeForm()
                         }    
                     }}
                 >
-                    Create task & Close
+                    Create & Close
                 </CButton>
                 <CButton color="primary"
                     type="submit"
                     onClick={() => {
-                        addTask()
-                        resetAddTaskForm()
+                        submit(false)
+                        resetForm()
                     }}
                 >
-                    Create task
+                    Create
                 </CButton>
             </CModalFooter>
         </CModal>
+        </>
+    )
+}
+
+const Tasks = ({tasks, done}) => {
+    return (
+        tasks.length > 0 ?
+        tasks.map(task => 
+            <div key={task.id}>
+                <CCard style={{ width: '18rem' }}>
+                    <CCardHeader>
+                        {task.name}
+                        {Array.from(task.tags).map(tag => <CBadge key={`${task.id}-${tag.name}`} shape="rounded-pill" style={{backgroundColor: tag.color}}>{tag.name}</CBadge>)}
+                    </CCardHeader>
+                    <CListGroup flush>
+                        {task.description.length > 0 && <CListGroupItem>{task.description}</CListGroupItem>}
+                        <CListGroupItem>
+                            <CButton 
+                                color="primary"
+                                onClick={()=> {done(task.id)}}
+                            >
+                            Done
+                            </CButton>
+                        </CListGroupItem>
+                    </CListGroup>
+                </CCard>
+            </div>
+        )
+        : <p>You have no tasks, wohoo! Click + to add one</p>
+    )
+}
+
+const Todo = () => {
+    const [taskID, setTaskID] = useState(0)
+    const [tasks, setTasks] = useState([])
+    const [tags, setTags] = useState(new Set([{name: 'School', color: '#00FF00'}, {name: 'Fun', color: "#FF0000"}]))
+    const [openAddTaskForm, setOpenAddTaskForm] = useState(false)
+
+    const addTask = (form) => {
+        setTasks(() => [...tasks, {
+            id: taskID,
+            name: form.name,
+            description: form.description,
+            tags: form.tags,
+        }])
+        setTaskID(taskID+1)
+    }
+
+    const completeTask = (id) => {
+        setTasks(tasks.filter((task) => task.id !== id))
+    }
+
+    return (
+        <>
+         <CButton 
+            color="primary" 
+            onClick={() => {setOpenAddTaskForm(true)}}
+        >
+            +
+        </CButton>
+
+        <Tasks tasks={tasks} done={(id) => {completeTask(id)}}/>
+
+        {openAddTaskForm && <AddTaskForm tagPool={tags} onSubmit={(form) => {
+            if (form) {
+                addTask(form)
+                setOpenAddTaskForm(!form.close)
+            } else {
+                setOpenAddTaskForm(false)
+            }
+            
+        }}/>}
         </>
     )
 }
