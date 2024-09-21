@@ -51,7 +51,16 @@ const Toasts = React.lazy(() => import('./views/notifications/toasts/Toasts'))
 
 const Widgets = React.lazy(() => import('./views/widgets/Widgets'))
 
+// My components
+const Todo = React.lazy(() => import('./views/Todo'))
+const Medication = React.lazy(() => import('./views/Medication'))
+const Journal = React.lazy(() => import('./views/Journal'))
+
 const routes = [
+  { path: '/todo', name: 'Todo', element: Todo },
+  { path: '/medication', name: 'Medication', element: Medication },
+  { path: '/journal', name: 'Journal', element: Journal },
+
   { path: '/', exact: true, name: 'Home' },
   { path: '/dashboard', name: 'Dashboard', element: Dashboard },
   { path: '/theme', name: 'Theme', element: Colors, exact: true },
