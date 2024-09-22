@@ -1,0 +1,23 @@
+.form-tag {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.form-tag > * {
+    margin-left: 2.5px;
+    margin-right: 2.5px;
+    margin-bottom: 10px;
+}
+
+.form-tag-name {
+    flex: 20;
+}
+
+.form-tag-color {
+    flex: 1;
+}
+
+.form-tag-delete {
+    flex: 1;
+}
+

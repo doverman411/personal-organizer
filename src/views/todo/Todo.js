@@ -17,25 +17,28 @@ import {
     CFormCheck,
     CContainer,
     CBadge,
+    CInputGroup,
+    CCloseButton,
  } from "@coreui/react"
 import { Set } from "core-js"
+import './styles.css'
+
+let taskID = 0
+let tagID = 0
 
 const AddTaskForm = ({onSubmit, tagPool}) => {
     const [name, setName] = useState('')
     const [description, setDescription] = useState('')
-    const [tags, setTags] = useState(new Set())
+    const [tags, setTags] = useState([])
 
     const valid = () => {
-        return name.length;
+        return name.trim().length
     }
 
     const submit = (close) => {
-        if (!valid()) {
-            return
-        }
         onSubmit({
-            name: name, 
-            description: description, 
+            name: name.trim(), 
+            description: description.trim(), 
             tags: tags, 
             close: close,
         })
@@ -48,7 +51,7 @@ const AddTaskForm = ({onSubmit, tagPool}) => {
     const resetForm = () => {
         setName('')
         setDescription('')
-        setTags(new Set())
+        setTags([])
     }
 
     return (
@@ -64,17 +67,19 @@ const AddTaskForm = ({onSubmit, tagPool}) => {
             </CModalHeader>
             <CModalBody>
                 <CForm>
+                    {/* Name */}
                     <div className="mb-3">
                         <CFormLabel htmlFor="taskName">Name</CFormLabel>
                         <CFormInput
                             id="taskName" 
                             value={name}
                             type="text"
-                            invalid={!name.length}
+                            invalid={!valid()}
                             feedbackInvalid={<p>This field is required</p>}
                             onChange={(event)=>{setName(event.target.value)}}
                         />
                     </div>
+                    {/* Description */}
                     <div className="mb-3">
                         <CFormLabel htmlFor="taskDescription">Description</CFormLabel>
                         <CFormTextarea 
@@ -85,19 +90,20 @@ const AddTaskForm = ({onSubmit, tagPool}) => {
                             onChange={(event)=>{setDescription(event.target.value)}}
                         ></CFormTextarea>
                     </div>
+                    {/* Tags */}
                     <div className="mb-3">
                         <CFormLabel>Tags</CFormLabel>
-                        {Array.from(tagPool).map((tag) => 
+                        {tagPool.map((tag) => 
                             <CFormCheck key={tag.name}
-                            id={`taskTags-${tag.name}`}
-                            checked={tags.has(tag)}
+                            id={tag.name}
+                            checked={tags.includes(tag)}
                             label={<CBadge shape="rounded-pill" style={{backgroundColor: tag.color}}>{tag.name}</CBadge>}
                             onChange={(event)=>{
-                                const newTags = new Set(tags)
+                                const newTags = [...tags]
                                 if (event.target.checked) {
-                                    newTags.add(tag)
+                                    newTags.push(tag)
                                 } else {
-                                    newTags.delete(tag)
+                                    newTags.splice(newTags.indexOf(tag),1)
                                 }
                                 setTags(newTags)
                             }}
@@ -106,18 +112,15 @@ const AddTaskForm = ({onSubmit, tagPool}) => {
                     </div>
                 </CForm>
             </CModalBody>
+            {/* Buttons */}
             <CModalFooter>
                 <CButton color="secondary" onClick={closeForm}>
                 Close
                 </CButton>
                 <CButton color="primary" 
                     type="submit"
-                    onClick={() => {
-                        submit(true)
-                        if (valid()) {
-                            closeForm()
-                        }    
-                    }}
+                    onClick={() => {submit(true)}}
+                    disabled={!valid()}
                 >
                     Create & Close
                 </CButton>
@@ -127,6 +130,7 @@ const AddTaskForm = ({onSubmit, tagPool}) => {
                         submit(false)
                         resetForm()
                     }}
+                    disabled={!valid()}
                 >
                     Create
                 </CButton>
@@ -134,6 +138,79 @@ const AddTaskForm = ({onSubmit, tagPool}) => {
         </CModal>
         </>
     )
+}
+
+const TagsForm = ({onSubmit, tagPool}) => {
+    const [tags, setTags] = useState(tagPool.map(tag => ({...tag})))
+
+    const closeForm = () => {
+        onSubmit(undefined)
+    }
+
+    const valid = () => {
+        // tag names should be non-blank and unique
+        return tags.every((tag) => tag.name.trim().length !== 0) && new Set(tags.map(tag => tag.name)).size === tags.length
+    }
+
+    const nameValid = (tag) => {
+        const name = tag.name
+        return name.trim().length !== 0 && tags.filter(tag => tag.name === name).length === 1
+    }
+
+    return (
+    <>
+    <CModal size="sm"
+    alignment="center"
+    visible
+    onClose={closeForm}
+    aria-labelledby="AddTask"
+    >
+        <CModalHeader>
+            <CModalTitle id="Tags">Tags</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+            <CForm>
+                {tags.map(tag => 
+                    <div key={tag.id} className="form-tag">
+                        <div className="form-tag-name">
+                            <CFormInput 
+                                id={`tagName${tag.id}`}
+                                defaultValue={tag.name}
+                                invalid={!nameValid(tags.find((t)=> t.id === tag.id))}
+                                feedbackInvalid={<p>Required and must be unique</p>}
+                                onChange={(event) => {tags.find((t)=> t.id === tag.id).name = event.target.value; setTags([...tags])}}
+                            />
+                        </div>
+                        <CFormInput className="form-tag-color"
+                            id={`tagColor${tag.id}`} 
+                            type="color" 
+                            defaultValue={tag.color} 
+                            onChange={(event) => {tags.find((t)=>t.id === tag.id).color = event.target.value; setTags([...tags])}}
+                        />
+                        <div className="form-tag-delete">
+                            <CCloseButton className="form-tag-delete" onClick={(event) => {setTags(tags.filter((t) => t !== tag))}}/>
+                        </div>
+                    </div>
+                )}
+                <CButton color="primary" onClick={() => {setTags([...tags, {id: tagID++, name: '', color: '#000000'}])}}>
+                    +
+                </CButton>
+            </CForm>
+        </CModalBody>
+        <CModalFooter>
+            <CButton color="secondary" onClick={closeForm}>
+            Close
+            </CButton>
+            <CButton color="primary" 
+                type="submit"
+                disabled={!valid()}
+                onClick={() => {onSubmit(tags)}}
+            >
+                Save
+            </CButton>
+        </CModalFooter>
+    </CModal>
+    </>)
 }
 
 const Tasks = ({tasks, done}) => {
@@ -144,7 +221,7 @@ const Tasks = ({tasks, done}) => {
                 <CCard style={{ width: '18rem' }}>
                     <CCardHeader>
                         {task.name}
-                        {Array.from(task.tags).map(tag => <CBadge key={`${task.id}-${tag.name}`} shape="rounded-pill" style={{backgroundColor: tag.color}}>{tag.name}</CBadge>)}
+                        {task.tags.map(tag => <CBadge key={`${task.id}-${tag.name}`} shape="rounded-pill" style={{backgroundColor: tag.color}}>{tag.name}</CBadge>)}
                     </CCardHeader>
                     <CListGroup flush>
                         {task.description.length > 0 && <CListGroupItem>{task.description}</CListGroupItem>}
@@ -165,19 +242,18 @@ const Tasks = ({tasks, done}) => {
 }
 
 const Todo = () => {
-    const [taskID, setTaskID] = useState(0)
     const [tasks, setTasks] = useState([])
-    const [tags, setTags] = useState(new Set([{name: 'School', color: '#00FF00'}, {name: 'Fun', color: "#FF0000"}]))
+    const [tags, setTags] = useState([])
     const [openAddTaskForm, setOpenAddTaskForm] = useState(false)
+    const [openTagsForm, setOpenTagsForm] = useState(false)
 
     const addTask = (form) => {
         setTasks(() => [...tasks, {
-            id: taskID,
+            id: taskID++,
             name: form.name,
             description: form.description,
             tags: form.tags,
         }])
-        setTaskID(taskID+1)
     }
 
     const completeTask = (id) => {
@@ -192,6 +268,13 @@ const Todo = () => {
         >
             +
         </CButton>
+        
+        <CButton 
+            color="primary" 
+            onClick={() => {setOpenTagsForm(true)}}
+        >
+            Tags
+        </CButton>
 
         <Tasks tasks={tasks} done={(id) => {completeTask(id)}}/>
 
@@ -203,6 +286,25 @@ const Todo = () => {
                 setOpenAddTaskForm(false)
             }
             
+        }}/>}
+
+        {openTagsForm && <TagsForm tagPool={tags} onSubmit={(form) => {
+            setOpenTagsForm(false)
+            if (!form) {
+                return
+            }
+            setTags(form)
+            for (const task of tasks) {
+                for (const tag of task.tags) {
+                    const coorespondingTag = form.find((t) => t.id === tag.id)
+                    if (coorespondingTag) {
+                        task.tags.splice(task.tags.indexOf(tag),1,coorespondingTag)
+                    } else {
+                        task.tags = task.tags.filter((t) => t.id !== tag.id)
+                    }
+                }
+            }
+            setTasks([...tasks])
         }}/>}
         </>
     )
