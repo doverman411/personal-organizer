@@ -19,8 +19,10 @@ import {
     CBadge,
     CInputGroup,
     CCloseButton,
+    CCardFooter,
  } from "@coreui/react"
 import { Set } from "core-js"
+import contrastColor from '../../utils/contrast-text'
 import './styles.css'
 
 let taskID = 0
@@ -97,7 +99,7 @@ const AddTaskForm = ({onSubmit, tagPool}) => {
                             <CFormCheck key={tag.name}
                             id={tag.name}
                             checked={tags.includes(tag)}
-                            label={<CBadge shape="rounded-pill" style={{backgroundColor: tag.color}}>{tag.name}</CBadge>}
+                            label={<CBadge shape="rounded-pill" className="badge" style={{backgroundColor: tag.color, color: contrastColor(tag.color)}}>{tag.name}</CBadge>}
                             onChange={(event)=>{
                                 const newTags = [...tags]
                                 if (event.target.checked) {
@@ -216,15 +218,27 @@ const TagsForm = ({onSubmit, tagPool}) => {
 const Tasks = ({tasks, done}) => {
     return (
         tasks.length > 0 ?
-        tasks.map(task => 
+        <div className="tasks-container">
+        {tasks.map(task => 
             <div key={task.id}>
                 <CCard style={{ width: '18rem' }}>
                     <CCardHeader>
-                        {task.name}
-                        {task.tags.map(tag => <CBadge key={`${task.id}-${tag.name}`} shape="rounded-pill" style={{backgroundColor: tag.color}}>{tag.name}</CBadge>)}
+                        <span className="task-header-name">{task.name}</span>
                     </CCardHeader>
                     <CListGroup flush>
                         {task.description.length > 0 && <CListGroupItem>{task.description}</CListGroupItem>}
+                        { task.tags.length > 0 && 
+                            <CListGroupItem>
+                                <div className="task-header-tags">
+                                    {task.tags.map(tag => <CBadge 
+                                        key={`${task.id}-${tag.name}`} 
+                                        shape="rounded-pill" 
+                                        style={{backgroundColor: tag.color, color: contrastColor(tag.color)}}>
+                                            {tag.name}
+                                    </CBadge>)}
+                                </div>
+                            </CListGroupItem>
+                            }
                         <CListGroupItem>
                             <CButton 
                                 color="primary"
@@ -236,7 +250,8 @@ const Tasks = ({tasks, done}) => {
                     </CListGroup>
                 </CCard>
             </div>
-        )
+        )}
+        </div>
         : <p>You have no tasks, wohoo! Click + to add one</p>
     )
 }
@@ -262,6 +277,7 @@ const Todo = () => {
 
     return (
         <>
+        <div className="tasks-ui">
          <CButton 
             color="primary" 
             onClick={() => {setOpenAddTaskForm(true)}}
@@ -275,6 +291,7 @@ const Todo = () => {
         >
             Tags
         </CButton>
+        </div>
 
         <Tasks tasks={tasks} done={(id) => {completeTask(id)}}/>
 
