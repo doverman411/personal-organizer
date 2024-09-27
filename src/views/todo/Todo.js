@@ -64,6 +64,7 @@ const AddTaskForm = ({tagPool, onSubmit}) => {
         visible
         onClose={closeForm}
         aria-labelledby="AddTask"
+        backdrop="static"
         >
             <CModalHeader>
                 <CModalTitle id="AddTask">New Task</CModalTitle>
@@ -160,13 +161,38 @@ const TagsForm = ({onSubmit, tagPool}) => {
         return name.trim().length !== 0 && tags.filter(tag => tag.name === name).length === 1
     }
 
+    const createNewTag = () => {
+        setTags(prevTags => [...prevTags, {id: tagID++, name: '', color: '#000000'}])
+    }
+
+    const deleteTag = (tag) => {
+        setTags(prevTags => prevTags.filter(t => t.id !== tag.id))
+    }
+
+    const changeName = (tag, name) => {
+        setTags(prevTags => {
+            const newTags = [...prevTags]
+            newTags.find(t => t.id === tag.id).name = name
+            return newTags
+        })
+    }
+
+    const changeColor = (tag, color) => {
+        setTags(prevTags => {
+            const newTags = [...prevTags]
+            newTags.find(t => t.id === tag.id).color = color
+            return newTags
+        })
+    }
+
     return (
     <>
     <CModal size="sm"
     alignment="center"
     visible
     onClose={closeForm}
-    aria-labelledby="AddTask"
+    aria-labelledby="EditTags"
+    backdrop="static"
     >
         <CModalHeader>
             <CModalTitle id="Tags">Tags</CModalTitle>
@@ -181,21 +207,21 @@ const TagsForm = ({onSubmit, tagPool}) => {
                                 defaultValue={tag.name}
                                 invalid={!nameValid(tags.find(t => t.id === tag.id))}
                                 feedbackInvalid={<p>Required and must be unique</p>}
-                                onChange={event => {tags.find(t => t.id === tag.id).name = event.target.value; setTags([...tags])}}
+                                onChange={event => {changeName(tag, event.target.value)}}
                             />
                         </div>
                         <CFormInput className="form-tag-color"
                             id={`tagColor${tag.id}`} 
                             type="color" 
                             defaultValue={tag.color} 
-                            onChange={event => {tags.find(t =>t.id === tag.id).color = event.target.value; setTags([...tags])}}
+                            onChange={event => {changeColor(tag, event.target.value)}}
                         />
                         <div className="form-tag-delete">
-                            <CCloseButton className="form-tag-delete" onClick={event => {setTags(tags.filter(t => t !== tag))}}/>
+                            <CCloseButton className="form-tag-delete" onClick={() => {deleteTag(tag)}}/>
                         </div>
                     </div>
                 )}
-                <CButton color="primary" onClick={() => {setTags([...tags, {id: tagID++, name: '', color: '#000000'}])}}>
+                <CButton color="primary" onClick={createNewTag}>
                     +
                 </CButton>
             </CForm>
@@ -220,29 +246,44 @@ const Filter = ({tagPool, onCheck, onOn, onDefault}) => {
     const [on, setOn] = useState(onDefault)
     const [all, setAll] = useState(true)
     const [checks, setChecks] = useState(new Map())
+    const [changedTags, setChangedTags] = useState([])
 
     useEffect(() => {
-        console.log(tagPool)
-        setChecks(new Map(tagPool.map(tag => [tag.id, checks.has(tag.id) ? checks.get(tag.id) : true])))
+        setChecks((prevChecks) => {
+            const newChecks = new Map([...prevChecks])
+            return new Map(tagPool.map(tag => [tag.id, newChecks.has(tag.id) ? newChecks.get(tag.id) : true]))
+        })
     }, [tagPool])
+
+    useEffect(() => {
+        changedTags.forEach(onCheck)
+    }, [changedTags])
 
     const tagWithID = (tagID) => {
         return tagPool.find(tag => tag.id === tagID)
     }
 
     const selectAll = (checked) => {
-        for (const [tagID, isChecked] of checks) {
-            if (isChecked != checked) {
-                onCheck(tagWithID(tagID))
+        const tagsToCheck = []
+        setChecks(prevChecks => {
+            const newChecks = new Map([...prevChecks])
+            for (const [tagID, isChecked] of newChecks) {
+                if (isChecked != checked) {
+                    tagsToCheck.push(tagWithID(tagID))
+                }
+                newChecks.set(tagID, checked)
             }
-            checks.set(tagID, checked)
-        }
-        setChecks(new Map([...checks]))
+            setChangedTags(tagsToCheck)
+            return newChecks
+        })
     }
 
     const select = (tag) => {
-        checks.set(tag.id, !checks.get(tag.id))
-        setChecks(new Map([...checks]))
+        setChecks(prevChecks => {
+            const newChecks = new Map([...prevChecks])
+            newChecks.set(tag.id, !newChecks.get(tag.id))
+            return newChecks
+        })
     }
 
     return (
@@ -256,8 +297,8 @@ const Filter = ({tagPool, onCheck, onOn, onDefault}) => {
                     label={<p>Filter by tag</p>}
                     onClick={event => {
                         onOn(event.target.checked)
-                        setOn(event.target.checked
-                    )}}
+                        setOn(event.target.checked)
+                    }}
                     checked={on}
                     readOnly
                 />
@@ -290,9 +331,9 @@ const Filter = ({tagPool, onCheck, onOn, onDefault}) => {
 
 const Tasks = ({tasks, done, filter}) => {
     return (
-        tasks.length > 0 ?
         <div className="tasks-container">
-        {tasks.filter(task => !filter.on || task.tags.map(tag => tag.id).some(tagID => filter.tags.map(tag => tag.id).includes(tagID))).map(task => 
+        {tasks.length > 0 ?
+        tasks.filter(task => !filter.on || task.tags.map(tag => tag.id).some(tagID => filter.tags.map(tag => tag.id).includes(tagID))).map(task => 
             <div key={task.id}>
                 <CCard style={{ width: '18rem' }}>
                     <CCardHeader>
@@ -323,18 +364,19 @@ const Tasks = ({tasks, done, filter}) => {
                     </CListGroup>
                 </CCard>
             </div>
-        )}
+        )
+        : <p>You have no tasks, wohoo! Click + to add one</p>}
         </div>
-        : <p>You have no tasks, wohoo! Click + to add one</p>
+        
     )
 }
 
 const Todo = () => {
-    const test = [
-        {id: -1, name: "School", color: "#000000"},
-        {id: -2, name: "Work", color: "#FFFFFF"},
-        {id: -3, name: "Fun", color: "932452"},
-    ]
+    // const test = [
+    //     {id: -1, name: "School", color: "#000000"},
+    //     {id: -2, name: "Work", color: "#FFFFFF"},
+    //     {id: -3, name: "Fun", color: "932452"},
+    // ]
     // const test1 = [
     //     {id: -1, name: "Dance in suit", description: "Learn the tiktok dance", tags: [test[2]]},
     //     {id: -2, name: "All", description: "Do it all. You shall.", tags: [...test]},
@@ -351,7 +393,7 @@ const Todo = () => {
     const [filter, setFilter] = useState({on: filterOnDefault, tags: []})
 
     const addTask = (form) => {
-        setTasks(() => [...tasks, {
+        setTasks((prevTasks) => [...prevTasks, {
             id: taskID++,
             name: form.name,
             description: form.description,
@@ -360,7 +402,82 @@ const Todo = () => {
     }
 
     const completeTask = (id) => {
-        setTasks(tasks.filter((task) => task.id !== id))
+        setTasks(prevTasks => prevTasks.filter((task) => task.id !== id))
+    }
+
+    const onSubmitTaskForm = (form) => {
+        if (form) {
+            addTask(form)
+            setOpenAddTaskForm(!form.close)
+        } else {
+            setOpenAddTaskForm(false)
+        }
+    }
+
+    const onSubmitTagsForm = (form) => {
+        setOpenTagsForm(false)
+        if (!form) {
+            return
+        }
+        // updating filter's tags
+        setFilter(prevFilter => {
+            const newFilter = { ...prevFilter, tags: [...prevFilter.tags] };
+            for (const tag of form) {
+                const coorespondingTagIndex = newFilter.tags.findIndex(t => t.id === tag.id)
+                if (coorespondingTagIndex !== -1) {
+                    newFilter.tags[coorespondingTagIndex] = tag
+                } else if (tags.every(t => t.id !== tag.id)) {
+                    newFilter.tags.push(tag)
+                }
+            }
+            for (const tag of newFilter.tags) {
+                if (!form.find(t => t.id === tag.id)) {
+                    newFilter.tags.splice(newFilter.tags.findIndex(t => t.id === tag.id),1)
+                }
+            }
+            return newFilter
+        })
+
+        // updating tasks' tags
+        setTasks(prevTasks => {
+            const newTasks = prevTasks.map(task => ({
+                ...task, 
+                tags: [...task.tags],
+            }))
+            for (const task of newTasks) {
+                for (const tag of task.tags) {
+                    const coorespondingTag = form.find(t => t.id === tag.id)
+                    if (coorespondingTag) {
+                        task.tags.splice(task.tags.indexOf(tag),1,coorespondingTag)
+                    } else {
+                        task.tags = task.tags.filter(t => t.id !== tag.id)
+                    }
+                }
+            }
+            return newTasks
+        })
+        setTags(form)
+    }
+
+    const onCheckFilter = (tag) => {
+        setFilter(prevFilter => {
+            const newFilter = {...prevFilter, tags: [...prevFilter.tags]}
+            const tagIndex = newFilter.tags.findIndex(t => t.id === tag.id)
+            if (tagIndex !== -1) {
+                newFilter.tags.splice(tagIndex,1)
+            } else {
+                newFilter.tags.push(tag)
+            }
+            return newFilter
+        })
+    }
+
+    const onOnFilter = (on) => {
+        setFilter(prevFilter => {
+            const newFilter = {...prevFilter, tags: [...prevFilter.tags]}
+            newFilter.on = on 
+            return newFilter
+        })
     }
 
     return (
@@ -384,74 +501,19 @@ const Todo = () => {
         <Filter 
             onDefault={filterOnDefault} 
             tagPool={tags} 
-            onCheck={tag => {
-                const tagIndex = filter.tags.findIndex(t => t.id === tag.id)
-                if (tagIndex !== -1) {
-                    filter.tags.splice(tagIndex,1)
-                } else {
-                    filter.tags.push(tag)
-                }
-                setFilter({...filter})
-            }}
-            onOn={on => {
-                filter.on = on 
-                setFilter({...filter})
-            }}
-            />
+            onCheck={onCheckFilter}
+            onOn={onOnFilter}
+        />
 
-        <Tasks tasks={tasks} filter={filter} done={id => {completeTask(id)}}/>
+        <Tasks 
+            tasks={tasks} 
+            filter={filter} 
+            done={completeTask}
+        />
 
-        {openAddTaskForm && <AddTaskForm tagPool={tags} onSubmit={form => {
-            if (form) {
-                addTask(form)
-                setOpenAddTaskForm(!form.close)
-            } else {
-                setOpenAddTaskForm(false)
-            }
-            
-        }}/>}
+        {openAddTaskForm && <AddTaskForm tagPool={tags} onSubmit={onSubmitTaskForm}/>}
 
-        {openTagsForm && <TagsForm tagPool={tags} onSubmit={form => {
-            setOpenTagsForm(false)
-            if (!form) {
-                return
-            }
-            
-            // updating filter's tags
-            const newFilter = {...filter}
-            for (const tag of form) {
-                const coorespondingTagIndex = newFilter.tags.findIndex(t => t.id === tag.id)
-                if (coorespondingTagIndex !== -1) {
-                    newFilter.tags[coorespondingTagIndex] = tag
-                } else if (tags.every(t => t.id !== tag.id)) {
-                    newFilter.tags.push(tag)
-                }
-            }
-            for (const tag of newFilter.tags) {
-                if (!form.find(t => t.id === tag.id)) {
-                    newFilter.tags.splice(newFilter.tags.findIndex(t => t.id === tag.id),1)
-                }
-            }
-            setFilter(newFilter)
-
-            // updating tasks' tags
-            for (const task of tasks) {
-                for (const tag of task.tags) {
-                    const coorespondingTag = form.find(t => t.id === tag.id)
-                    if (coorespondingTag) {
-                        task.tags.splice(task.tags.indexOf(tag),1,coorespondingTag)
-                    } else {
-                        task.tags = task.tags.filter(t => t.id !== tag.id)
-                    }
-                }
-            }
-            setTasks([...tasks])
-
-            setTags(form)
-        }}/>}
-        {
-            filter.tags.map((x) => <p key={x.id}>{x.name}</p>)
-        }
+        {openTagsForm && <TagsForm tagPool={tags} onSubmit={onSubmitTagsForm}/>}
         </>
     )
 }
