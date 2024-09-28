@@ -21,18 +21,24 @@ import {
     CCloseButton,
     CCardFooter,
     CCardBody,
+    CTooltip,
  } from "@coreui/react"
+import CIcon from "@coreui/icons-react"
+import { cilPencil } from "@coreui/icons"
 import { Set } from "core-js"
 import contrastColor from '../../utils/contrast-text'
 import './styles.css'
 
+
+
 let taskID = 0
 let tagID = 0
 
-const AddTaskForm = ({tagPool, onSubmit}) => {
-    const [name, setName] = useState('')
-    const [description, setDescription] = useState('')
-    const [tags, setTags] = useState([])
+const TaskForm = ({tagPool, onSubmit, editData}) => {
+    const id = editData ? editData.id : undefined
+    const [name, setName] = useState(editData ? editData.name : '')
+    const [description, setDescription] = useState(editData ? editData.description : '')
+    const [tags, setTags] = useState(editData ? [...editData.tags] : [])
 
     const valid = () => {
         return name.trim().length
@@ -40,6 +46,7 @@ const AddTaskForm = ({tagPool, onSubmit}) => {
 
     const submit = (close) => {
         onSubmit({
+            id: id !== undefined ? id : taskID++,
             name: name.trim(), 
             description: description.trim(), 
             tags: tags, 
@@ -57,6 +64,18 @@ const AddTaskForm = ({tagPool, onSubmit}) => {
         setTags([])
     }
 
+    const onTagChange = (tag, checked) => {
+        setTags(prevTags => {
+            let newTags = [...prevTags]
+            if (checked) {
+                newTags.push(tag)
+            } else {
+                newTags = newTags.filter(t => t.id !== tag.id)
+            }
+            return newTags
+        })
+    }
+
     return (
         <>
         <CModal
@@ -67,7 +86,7 @@ const AddTaskForm = ({tagPool, onSubmit}) => {
         backdrop="static"
         >
             <CModalHeader>
-                <CModalTitle id="AddTask">New Task</CModalTitle>
+                <CModalTitle id="AddTask">{editData ? <>Edit task</> : <>New Task</>}</CModalTitle>
             </CModalHeader>
             <CModalBody>
                 <CForm>
@@ -100,17 +119,9 @@ const AddTaskForm = ({tagPool, onSubmit}) => {
                         {tagPool.map(tag => 
                             <CFormCheck key={tag.name}
                             id={tag.name}
-                            checked={tags.includes(tag)}
+                            checked={tags.find(t => t.id === tag.id)}
                             label={<CBadge shape="rounded-pill" className="badge" style={{backgroundColor: tag.color, color: contrastColor(tag.color)}}>{tag.name}</CBadge>}
-                            onChange={event => {
-                                const newTags = [...tags]
-                                if (event.target.checked) {
-                                    newTags.push(tag)
-                                } else {
-                                    newTags.splice(newTags.indexOf(tag),1)
-                                }
-                                setTags(newTags)
-                            }}
+                            onChange={(event) => onTagChange(tag, event.target.checked)}
                             ></CFormCheck>
                         )}
                     </div>
@@ -126,9 +137,9 @@ const AddTaskForm = ({tagPool, onSubmit}) => {
                     onClick={() => {submit(true)}}
                     disabled={!valid()}
                 >
-                    Create & Close
+                    {editData ? <>Save</> : <>Create & Close</>}
                 </CButton>
-                <CButton color="primary"
+                {!editData && <CButton color="primary"
                     type="submit"
                     onClick={() => {
                         submit(false)
@@ -137,7 +148,7 @@ const AddTaskForm = ({tagPool, onSubmit}) => {
                     disabled={!valid()}
                 >
                     Create
-                </CButton>
+                </CButton>}
             </CModalFooter>
         </CModal>
         </>
@@ -329,15 +340,35 @@ const Filter = ({tagPool, onCheck, onOn, onDefault}) => {
     )
 }
 
-const Tasks = ({tasks, done, filter}) => {
+const Tasks = ({tasks, done, filter, onEdit}) => {
     return (
         <div className="tasks-container">
         {tasks.length > 0 ?
-        tasks.filter(task => !filter.on || task.tags.map(tag => tag.id).some(tagID => filter.tags.map(tag => tag.id).includes(tagID))).map(task => 
+        tasks.filter(task => !filter.on || task.tags.some(taskTag => filter.tags.find(filterTag => filterTag.id === taskTag.id))).map(task =>
             <div key={task.id}>
                 <CCard style={{ width: '18rem' }}>
                     <CCardHeader>
-                        <span className="task-header-name">{task.name}</span>
+                        <div className="task-top-container">
+                            <div className="task-header-name">
+                                <span>{task.name}</span>
+                            </div>
+                            <div className="task-header-edit-button">
+                            <CTooltip
+                                content={<>Edit task</>}
+                            >
+                                <CButton 
+                                    color="primary" 
+                                    shape="rounded-3" 
+                                    variant="ghost"
+                                    onClick={() => {onEdit(task)}}
+                                >
+                                    <CIcon icon={cilPencil} size="lg" />
+                                    
+                                </CButton>
+                            </CTooltip>
+                            </div>
+                        </div>
+                        
                     </CCardHeader>
                     <CListGroup flush>
                         {task.description.length > 0 && <CListGroupItem>{task.description}</CListGroupItem>}
@@ -389,12 +420,14 @@ const Todo = () => {
     const [tasks, setTasks] = useState([])
     const [tags, setTags] = useState([])
     const [openAddTaskForm, setOpenAddTaskForm] = useState(false)
+    const [openEditTaskForm, setOpenEditTaskForm] = useState(false)
+    const [editTaskData, setEditTaskData] = useState()
     const [openTagsForm, setOpenTagsForm] = useState(false)
     const [filter, setFilter] = useState({on: filterOnDefault, tags: []})
 
     const addTask = (form) => {
         setTasks((prevTasks) => [...prevTasks, {
-            id: taskID++,
+            id: form.id,
             name: form.name,
             description: form.description,
             tags: form.tags,
@@ -405,13 +438,25 @@ const Todo = () => {
         setTasks(prevTasks => prevTasks.filter((task) => task.id !== id))
     }
 
-    const onSubmitTaskForm = (form) => {
+    const onSubmitAddTaskForm = (form) => {
         if (form) {
             addTask(form)
             setOpenAddTaskForm(!form.close)
         } else {
             setOpenAddTaskForm(false)
         }
+    }
+
+    const onSubmitEditTaskForm = (form) => {
+        setOpenEditTaskForm(false)
+        if (!form) {
+            return
+        }
+        setTasks(prevTasks => {
+            const newTasks = [...prevTasks]
+            newTasks.splice(newTasks.findIndex(task => task.id === form.id),1,form)
+            return newTasks
+        })
     }
 
     const onSubmitTagsForm = (form) => {
@@ -484,12 +529,14 @@ const Todo = () => {
         <>
         <div className="todo-container">
             <div className="add-task-button ui-button">
-                <CButton 
-                    color="primary" 
-                    onClick={() => {setOpenAddTaskForm(true)}}
-                >
-                 +
-                </CButton>
+                <CTooltip content="Create task">
+                    <CButton 
+                        color="primary" 
+                        onClick={() => {setOpenAddTaskForm(true)}}
+                    >
+                    +
+                    </CButton>
+                </CTooltip>
             </div>
 
             <div className="title"><h1>Todo</h1></div>
@@ -520,11 +567,17 @@ const Todo = () => {
                     tasks={tasks} 
                     filter={filter} 
                     done={completeTask}
+                    onEdit={(task) => {
+                        setOpenEditTaskForm(true)
+                        setEditTaskData(task)
+                    }}
                 />
             </div>
         </div>
 
-        {openAddTaskForm && <AddTaskForm tagPool={tags} onSubmit={onSubmitTaskForm}/>}
+        {openAddTaskForm && <TaskForm tagPool={tags} onSubmit={onSubmitAddTaskForm}/>}
+
+        {openEditTaskForm && <TaskForm tagPool={tags} editData={editTaskData} onSubmit={onSubmitEditTaskForm}/>}
 
         {openTagsForm && <TagsForm tagPool={tags} onSubmit={onSubmitTagsForm}/>}
         </>

@@ -31,9 +31,25 @@
     margin-bottom: 10px;
 }
 
-.task-header-name {
+.task-top-container {
+    display: flex;
+    justify-content: space-between;
+}
+
+.task-header-name > span {
     font-weight: bold;
     font-size: 15pt;
+}
+
+.task-header-edit-button {
+    display: flex;
+    justify-content: flex-end;
+    
+}
+
+.task-header-edit-button > * {
+    display: flex;
+    justify-content: flex-end;
 }
 
 .task-header-tags {
