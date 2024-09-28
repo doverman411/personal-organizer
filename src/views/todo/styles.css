@@ -28,13 +28,7 @@
 }
 
 .tasks-container > * {
-    margin-top: 10px;
     margin-bottom: 10px;
-}
-
-.tasks-ui {
-    display: flex;
-    justify-content: space-between;
 }
 
 .task-header-name {
@@ -55,5 +49,34 @@
     margin-bottom: 2.5px;
     min-width: 50px;
     max-height: 21px;
+}
+
+.todo-container {
+    display: grid;
+    grid-template: 40px 100% / 1fr 2fr 1fr;
+}
+
+.add-task-button,
+.tags-form-button,
+.title,
+.filter, 
+.tasks {
+    display: flex;
+}
+
+.tags-form-button {
+    justify-content: flex-end;
+}
+
+.title {
+    justify-content: center;
+}
+
+.filter, .tasks {
+    margin-top: 10px;
+}
+
+.tasks {
+    justify-content: center;
 }
 

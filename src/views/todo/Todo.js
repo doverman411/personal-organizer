@@ -482,34 +482,47 @@ const Todo = () => {
 
     return (
         <>
-        <div className="tasks-ui">
-         <CButton 
-            color="primary" 
-            onClick={() => {setOpenAddTaskForm(true)}}
-        >
-            +
-        </CButton>
-        
-        <CButton 
-            color="primary" 
-            onClick={() => {setOpenTagsForm(true)}}
-        >
-            Tags
-        </CButton>
+        <div className="todo-container">
+            <div className="add-task-button ui-button">
+                <CButton 
+                    color="primary" 
+                    onClick={() => {setOpenAddTaskForm(true)}}
+                >
+                 +
+                </CButton>
+            </div>
+
+            <div className="title"><h1>Todo</h1></div>
+            
+            <div className="tags-form-button ui-button">
+                <CButton 
+                    color="primary" 
+                    onClick={() => {setOpenTagsForm(true)}}
+                >
+                    Tags
+                </CButton>
+            </div>
+            
+            <div className="filter-container">
+                <div className="filter">
+                    <Filter 
+                        
+                        onDefault={filterOnDefault} 
+                        tagPool={tags} 
+                        onCheck={onCheckFilter}
+                        onOn={onOnFilter}
+                    />
+                </div>
+            </div>
+
+            <div className="tasks">
+                <Tasks 
+                    tasks={tasks} 
+                    filter={filter} 
+                    done={completeTask}
+                />
+            </div>
         </div>
-
-        <Filter 
-            onDefault={filterOnDefault} 
-            tagPool={tags} 
-            onCheck={onCheckFilter}
-            onOn={onOnFilter}
-        />
-
-        <Tasks 
-            tasks={tasks} 
-            filter={filter} 
-            done={completeTask}
-        />
 
         {openAddTaskForm && <AddTaskForm tagPool={tags} onSubmit={onSubmitTaskForm}/>}
 
